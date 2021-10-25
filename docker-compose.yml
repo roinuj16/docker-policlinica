@@ -1,0 +1,73 @@
+version: '3.7'
+
+services:
+  api:
+    build:
+      args: 
+        user: aplication
+        uid: 1000
+      context: ./config/api
+      dockerfile: ./Dockerfile
+    container_name: api
+    restart: unless-stopped
+    working_dir: /var/www
+    ports:
+      - 80:80
+    volumes:
+      - ./www/api:/var/www/api:delegated
+      - ./config/api/apache/api.conf:/etc/apache2/sites-enabled/000-default.conf:delegated
+    depends_on: 
+      - redis
+      - queue
+    networks: 
+      - my-app
+
+  # db mysql
+  mysql:
+    image: mysql:5.7.22
+    restart: unless-stopped
+    container_name: mysql
+    environment: 
+        MYSQL_DATABASE: policlinica
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_PASSWORD: root
+        MYSQL_USER: root
+    volumes: 
+        - ./.docker/mysql/dbdata:/var/lib/mysql
+    ports: 
+        - 3388:3306
+    networks: 
+        - my-app
+
+  # queue
+  queue:
+    build: 
+      args: 
+        user: aplication
+        uid: 1000
+      context: ./config/api
+      dockerfile: Dockerfile
+    container_name: queue
+    restart: unless-stopped
+    image: laravel-queue-test
+    command: "php artisan queue:work"
+    volumes: 
+      - ./www/api:/var/www/api:delegated
+    depends_on: 
+      - redis
+    networks: 
+      - my-app
+
+  # redis
+  redis:
+    image: redis:latest
+    container_name: redis
+    networks: 
+      - my-app
+
+networks: 
+  my-app:
+    driver: bridge
+
+
+
